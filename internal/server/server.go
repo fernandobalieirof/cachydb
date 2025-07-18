@@ -41,6 +41,27 @@ func NewServer(cfg Config) *Server {
 	}
 }
 
+func (s *Server) loop() {
+	for {
+		select {
+		case rawMsg := <-s.msgCh:
+			if err := s.handleRawMessage(rawMsg); err != nil {
+				slog.Error(
+					"error handling raw message",
+					"err", err,
+				)
+			}
+		case peer := <-s.addPeerCh:
+			s.peers[peer] = true
+		case <-s.quitCh:
+			return
+
+		}
+
+	}
+}
+
+
 func (s *Server) Start() error {
 
 	ln, err := net.Listen("tcp", s.Config.ListenAddr)
@@ -57,20 +78,7 @@ func (s *Server) Start() error {
 	return s.acceptLoop()
 }
 
-func (s *Server) loop() {
-	for {
-		select {
-		case rawMsg := <-s.msgCh:
-			fmt.Println(rawMsg)
-		case peer := <-s.addPeerCh:
-			s.peers[peer] = true
-		case <-s.quitCh:
-			return
 
-		}
-
-	}
-}
 
 func (s *Server) acceptLoop() error {
 	for {
@@ -97,4 +105,9 @@ func (s *Server) handleConn(conn net.Conn) {
 			"err", err,
 			"remoteAddr", conn.RemoteAddr())
 	}
+}
+
+func (s *Server) handleRawMessage(rawMsg []byte) error {
+	fmt.Println(string(rawMsg))
+	return nil
 }
